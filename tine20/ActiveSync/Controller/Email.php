@@ -104,7 +104,7 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
      */
     public function getChangedEntries($_folderId, DateTime $_startTimeStamp, DateTime $_endTimeStamp = NULL)
     {
-        $filter = $this->_getContentFilter(0);
+/*        $filter = $this->_getContentFilter(0);
         $this->_addContainerFilter($filter, $_folderId);
 
         $startTimeStamp = ($_startTimeStamp instanceof DateTime) ? $_startTimeStamp->format(Tinebase_Record_Abstract::ISO8601LONG) : $_startTimeStamp;
@@ -149,7 +149,8 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
         
         $result = $this->_contentController->search($filter, NULL, false, true, 'sync');
         
-        return $result;
+        return $result;*/
+    	return array();
     }
     
     /**

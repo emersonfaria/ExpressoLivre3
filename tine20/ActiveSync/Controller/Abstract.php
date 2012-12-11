@@ -477,7 +477,17 @@ abstract class ActiveSync_Controller_Abstract implements Syncope_Data_IData
         }
         
         //if (Tinebase_Core::isLogLevel(Zend_Log::DEBUG)) Tinebase_Core::getLogger()->debug(__METHOD__ . '::' . __LINE__ . " assembled {$this->_contentFilterClass}: " . print_r($filter->toArray(), TRUE));
-        $result = $this->_contentController->search($filter, $pagination, false, true, 'sync');
+        $result_search = $this->_contentController->search($filter, $pagination, false, true, 'sync');
+        
+        if (is_array($result_search)) {
+        	return $result_search;
+        } else {
+        	$tineBaseRecordArray = $result_search->toArray();
+        	if (empty($tineBaseRecordArray)) $result = $tineBaseRecordArray;
+        	foreach ($tineBaseRecordArray as $idServerEntries){
+        		$result[] = $idServerEntries["id"];
+        	}
+        }
         
         return $result;
     }
@@ -487,13 +497,13 @@ abstract class ActiveSync_Controller_Abstract implements Syncope_Data_IData
         $this->updateCache($folder->folderid);
         
         $allClientEntries = $contentBackend->getFolderState($this->_device, $folder);
-        $allServerEntries = $this->getServerEntries($folder->folderid, $folder->lastfiltertype);
+       	$allServerEntries = $this->getServerEntries($folder->folderid, $folder->lastfiltertype);
         
         $addedEntries       = array_diff($allServerEntries, $allClientEntries);
         $deletedEntries     = array_diff($allClientEntries, $allServerEntries);
-        $changedEntries     = $this->getChangedEntries($folder->folderid, $syncState->lastsync);
-        
-        return count($addedEntries) + count($deletedEntries) + count($changedEntries);
+       	$changedEntries     = $this->getChangedEntries($folder->folderid, $syncState->lastsync);
+        	
+       	return count($addedEntries) + count($deletedEntries) + count($changedEntries);        	
     }
     
     

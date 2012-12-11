@@ -415,20 +415,7 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                     } else {
                         // fetch entries added since last sync
                         $allClientEntries = $this->_contentStateBackend->getFolderState($this->_device, $collectionData['folder']);
-                        if (trim(Tinebase_Core::getConfig()->messagecache) != 'imap') {
-                        	$allServerEntries = $dataController->getServerEntries($collectionData['collectionId'], $collectionData['filterType']);
-                        } else {
-                        	$tineBaseRecordArray = $dataController->getServerEntries($collectionData['collectionId'], $collectionData['filterType']);
-                        	
-                        	if (is_array($tineBaseRecordArray)) {
-                        		$allServerEntries = $tineBaseRecordArray;
-                        	} else {
-                        		$tineBaseRecordArray = $tineBaseRecordArray->toArray();
-                        		foreach ($tineBaseRecordArray as $idServerEntries){
-                        			$allServerEntries[] = $idServerEntries["id"];
-                        		}
-                        	}
-                        }
+                       	$allServerEntries = $dataController->getServerEntries($collectionData['collectionId'], $collectionData['filterType']);
                         // add entries
                         $serverDiff = array_diff($allServerEntries, $allClientEntries);
                         // add entries which produced problems during delete from client
@@ -450,20 +437,7 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                         $serverDeletes = array_diff($allClientEntries, $allServerEntries);
             
                         // fetch entries changed since last sync
-                        if (trim(Tinebase_Core::getConfig()->messagecache) != 'imap') {
-                        	$serverChanges = $dataController->getChangedEntries($collectionData['collectionId'], $collectionData['syncState']->lastsync, $this->_syncTimeStamp);
-                        } else {
-                        	$tineBaseRecordChangesArray = $dataController->getChangedEntries($collectionData['collectionId'], $collectionData['syncState']->lastsync, $this->_syncTimeStamp);
-                        	if (is_array($tineBaseRecordChangesArray)) {
-                        		$serverChanges = $tineBaseRecordChangesArray;
-                        	} else {
-                        		$tineBaseRecordChangesArray = $tineBaseRecordChangesArray->toArray();
-                        		foreach ($tineBaseRecordChangesArray as $idServerChanges){
-                        			$serverChanges[] = $idServerChanges["messageuid"];
-                        		}
-                        	}
-                        }
-
+                       	$serverChanges = $dataController->getChangedEntries($collectionData['collectionId'], $collectionData['syncState']->lastsync, $this->_syncTimeStamp);
                         $serverChanges = array_merge($serverChanges, $collectionData['forceChange']);
             
                         foreach($serverChanges as $id => $serverId) {
@@ -477,7 +451,6 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
             
                         // entries comeing in scope are already in $serverAdds and do not need to
                         // be send with $serverCanges
-                        $serverChanges = array();
                         $serverChanges = array_diff($serverChanges, $serverAdds);
                     }
                 
