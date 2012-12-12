@@ -588,13 +588,23 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
     
     public function moveItem($_srcFolderId, $_serverId, $_dstFolderId)
     {
-        $filter = new Felamimail_Model_MessageFilter(array(
-            array(
-                'field'     => 'id',
-                'operator'  => 'equals',
-                'value'     => $_serverId
-            )
-        ));
+    	if (trim(Tinebase_Core::getConfig()->messagecache) == 'imap') {
+        	$filter = new Felamimail_Model_MessageFilter(array(
+        			array(
+        					'field'     => 'id',
+        					'operator'  => 'equals',
+        					'value'     => array($_serverId)
+        			)
+        	));
+        } else {
+        	$filter = new Felamimail_Model_MessageFilter(array(
+        			array(
+        					'field'     => 'id',
+        					'operator'  => 'equals',
+        					'value'     => $_serverId
+        			)
+        	));        	
+        }
         
         Felamimail_Controller_Message_Move::getInstance()->moveMessages($filter, $_dstFolderId);
         
