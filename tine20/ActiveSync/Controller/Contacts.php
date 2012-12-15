@@ -383,4 +383,29 @@ class ActiveSync_Controller_Contacts extends ActiveSync_Controller_Abstract
         
         return $filterArray;
     }
+    
+    /**
+     * get syncable folders
+     *
+     * @return array
+     */
+    protected function _getSyncableFolders()
+    {
+    	$folders = array();
+    
+    	$containers = Tinebase_Container::getInstance()->getContainerByACL(Tinebase_Core::getUser(), $this->_applicationName, Tinebase_Model_Grants::GRANT_SYNC);
+    
+    	foreach ($containers as $container) {
+    		if ($container->type == 'personal') { //Don't sync shared folders to avoid large amounts of contacts
+    			$folders[$container->id] = array(
+    					'folderId'      => $container->id,
+    					'parentId'      => 0,
+    					'displayName'   => $container->name,
+    					'type'          => (count($folders) == 0) ? $this->_defaultFolderType : $this->_folderType
+    			);    			
+    		}
+    	}
+    
+    	return $folders;
+    }
 }
