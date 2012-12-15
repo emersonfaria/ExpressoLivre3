@@ -585,7 +585,8 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                         'folder_id'        => $collectionData['folder'],
                         'contentid'        => $serverId,
                         'creation_time'    => $this->_syncTimeStamp,
-                        'creation_synckey' => $collectionData['syncState']->counter
+                        'creation_synckey' => $collectionData['syncState']->counter,
+                    	'flags'            => $applicationData->getElementsByTagName('Read')->item(0)->nodeValue               		
                     ));
                     unset($serverAdds[$id]);    
                 }
