@@ -104,109 +104,79 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
      */
     public function getChangedEntries($_folderId, DateTime $_startTimeStamp, DateTime $_endTimeStamp = NULL)
     {
-        $this->_folderBackend       = Syncope_Registry::get('folderStateBackend');
-        $this->_contentStateBackend = Syncope_Registry::get('contentStateBackend');
-        $clientFolders = $this->_folderBackend->getFolderState($this->_device,'Email');
-        
-        foreach ($clientFolders as $clientFolder) {
-        	if ($clientFolder->folderid == $_folderId) {
-        		$lastFilterType = $clientFolder->lastfiltertype;
-        		$clientFolderId = $clientFolder->id;
-        		$deviceId = $clientFolder->device_id;
-        		break;
-        	}
-        }
-        
-        $filter = $this->_getContentFilter($lastFilterType);
-        $this->_addContainerFilter($filter, $_folderId);
-        
-        if(!empty($this->_sortField)) {
-        	$pagination = new Tinebase_Model_Pagination(array(
-        			'sort' => $this->_sortField
-        	));
-        } else {
-        	$pagination = null;
-        }
-        
-        //if (Tinebase_Core::isLogLevel(Zend_Log::DEBUG)) Tinebase_Core::getLogger()->debug(__METHOD__ . '::' . __LINE__ . " assembled {$this->_contentFilterClass}: " . print_r($filter->toArray(), TRUE));
-        $serverEntries = $this->_contentController->search($filter, $pagination, false, false, 'sync');
-        //$clientEntries = $this->_contentStateBackend->getFolderState($this->_device, $_folderId);
-        //$clientFolder = $this->_folderBackend->getFolder($this->_device, $_folderId);
-        
-        foreach ($serverEntries as $serverEntry) {
-        	$serverEntryFlags = $serverEntry->flags;
-        	$clientEntry = $this->_contentStateBackend->getContentState($deviceId, $clientFolderId, $serverEntry->id);
-        	$clientEntry->flags;
-        	
-        }
-        
-        /*if (is_array($result_search)) {
-        	return $result_search;
-        } else {
-        	$tineBaseRecordArray = $result_search->toArray();
-        	if (empty($tineBaseRecordArray)) $result = $tineBaseRecordArray;
-        	foreach ($tineBaseRecordArray as $idServerEntries){
-        		$result[] = $idServerEntries["id"];
-        	}
-        }*/
-/*
-    public function getFolderState  (Le o ultimo tipo de filtro de periodo de sincronia)
-    public function getServerEntries  (Criar uma função semelhante que retorne a estrutura de dados completa)
-          Para cada entrada do ServerEntry 
-               public function getContentState (Le o valor do flag (adicionar um campo de flag a tabela tine20_activesync_content para o flag))
-               Se (ServerEntry.flag <> ContentState.flag) entao 
-                   adiciona msg_id a array de retorno
-                   
-    
-    
-       
-        $filter = $this->_getContentFilter(0);
-        $this->_addContainerFilter($filter, $_folderId);
+    	if (trim(Tinebase_Core::getConfig()->messagecache) == 'imap') {
+    		$this->_folderBackend       = Syncope_Registry::get('folderStateBackend');
+    		$this->_contentStateBackend = Syncope_Registry::get('contentStateBackend');
+    		$clientFolders = $this->_folderBackend->getFolderState($this->_device,'Email');
+    		$changedEntries = array();
+    		
+    		foreach ($clientFolders as $clientFolder) {
+    			if ($clientFolder->folderid == $_folderId) {
+    				$lastFilterType = $clientFolder->lastfiltertype;
+    				$clientFolderId = $clientFolder->id;
+    				$deviceId = $clientFolder->device_id;
+    				break;
+    			}
+    		}
+    		
+    		$filter = $this->_getContentFilter($lastFilterType);
+    		$this->_addContainerFilter($filter, $_folderId);
+    		
+    		if(!empty($this->_sortField)) {
+    			$pagination = new Tinebase_Model_Pagination(array(
+    					'sort' => $this->_sortField
+    			));
+    		} else {
+    			$pagination = null;
+    		}
 
-        $startTimeStamp = ($_startTimeStamp instanceof DateTime) ? $_startTimeStamp->format(Tinebase_Record_Abstract::ISO8601LONG) : $_startTimeStamp;
-        if($_endTimeStamp !== NULL and trim(Tinebase_Core::getConfig()->messagecache) != 'imap') $_endTimeStamp->add(new DateInterval('P1D'));
-        $endTimeStamp = ($_endTimeStamp instanceof DateTime) ? $_endTimeStamp->format(Tinebase_Record_Abstract::ISO8601LONG) : $_endTimeStamp;
+    		$serverEntries = $this->_contentController->search($filter, $pagination, false, false, 'sync');
+    		foreach ($serverEntries as $serverEntry) {
+    			try {
+    				$clientEntry = $this->_contentStateBackend->getContentState($deviceId, $clientFolderId, $serverEntry->id);
+    			} catch (Exception $e) { // new registry in srv still not exists in state
+    				continue;
+    			}
+    		
+    			$serverSeenFlag = is_bool(array_search('\\Seen', $serverEntry->flags)) ? false : true;
+    			if (isset($clientEntry->flags)) {
+    				$clientSeenFlag = is_bool(array_search('\\Seen', unserialize($clientEntry->flags))) ? false : true;
+    			} else {
+    				$clientSeenFlag = false;
+    			}
+    			if ($clientSeenFlag !== $serverSeenFlag) {
+    				$changedEntries[] = $serverEntry->id;
+    			}
+    		}
+    		return $changedEntries;
 
-        if (trim(Tinebase_Core::getConfig()->messagecache) != 'imap') {
-        	$filter->addFilter(new Tinebase_Model_Filter_DateTime(
-            	'timestamp',
-            	'after',
-            	$startTimeStamp
-        	));
-        
-        	if($endTimeStamp !== NULL) {
-            	$filter->addFilter(new Tinebase_Model_Filter_DateTime(
-                	'timestamp',
-                	'before',
-                	$endTimeStamp
-           		));
-        	}
-        } else {
-        	$startTz = timezone_name_from_abbr(null, $_startTimeStamp->timezone * 3600, true);
-        	if($startTz === false) $startTz = timezone_name_from_abbr(null, $_startTimeStamp->timezone * 3600, false);
-        	
-        	$filter->addFilter(new Tinebase_Model_Filter_DateTime(array(
-        			'field' => 'received',
-        			'operator' => 'after',
-        			'value' => $startTimeStamp,
-        			'options' => array('timezone' => $startTz))));
-        	
-        	if($endTimeStamp !== NULL) {
-        		$filter->addFilter(new Tinebase_Model_Filter_DateTime(array(
-        				'field' => 'received',
-        				'operator' => 'before',
-        				'value' => $endTimeStamp,
-        				'options' => array('timezone' => $startTz))));
-        	}
-        	
-        }
-        
-        #if (Tinebase_Core::isLogLevel(Zend_Log::DEBUG)) Tinebase_Core::getLogger()->debug(__METHOD__ . '::' . __LINE__ . " filter " . print_r($filter->toArray(), true));
-        
-        $result = $this->_contentController->search($filter, NULL, false, true, 'sync');
-        
-        return $result;*/
-    	return array();
+    	} else {
+    		$filter = $this->_getContentFilter(0);
+    		$this->_addContainerFilter($filter, $_folderId);
+    		
+    		$startTimeStamp = ($_startTimeStamp instanceof DateTime) ? $_startTimeStamp->format(Tinebase_Record_Abstract::ISO8601LONG) : $_startTimeStamp;
+    		$endTimeStamp = ($_endTimeStamp instanceof DateTime) ? $_endTimeStamp->format(Tinebase_Record_Abstract::ISO8601LONG) : $_endTimeStamp;
+    		
+    		$filter->addFilter(new Tinebase_Model_Filter_DateTime(
+    				'timestamp',
+    				'after',
+    				$startTimeStamp
+    		));
+    		
+    		if($endTimeStamp !== NULL) {
+    			$filter->addFilter(new Tinebase_Model_Filter_DateTime(
+    					'timestamp',
+    					'before',
+    					$endTimeStamp
+    			));
+    		}
+    		
+    		#if (Tinebase_Core::isLogLevel(Zend_Log::DEBUG)) Tinebase_Core::getLogger()->debug(__METHOD__ . '::' . __LINE__ . " filter " . print_r($filter->toArray(), true));
+    		
+    		$result = $this->_contentController->search($filter, NULL, false, true, 'sync');
+    		
+    		return $result;
+    	}
     }
     
     /**
@@ -483,7 +453,7 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
      */
     public function updateEntry($_folderId, $_serverId, SimpleXMLElement $_entry)
     {
-        /*Tinebase_Core::getLogger()->info(__METHOD__ . '::' . __LINE__ . " CollectionId: $_folderId Id: $_serverId");
+        Tinebase_Core::getLogger()->info(__METHOD__ . '::' . __LINE__ . " CollectionId: $_folderId Id: $_serverId");
         
         $xmlData = $_entry->children('uri:Email');
         
@@ -499,7 +469,7 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
             $message = $this->_contentController->get($_serverId);
             $message->timestamp = $this->_syncTimeStamp;
             $this->_contentController->update($message);
-        }*/
+        }
         
         return;
     }

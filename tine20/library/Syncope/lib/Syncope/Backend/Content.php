@@ -53,10 +53,29 @@ class Syncope_Backend_Content implements Syncope_Backend_IContent
             'contentid'        => $_state->contentid,
             'creation_time'    => $_state->creation_time->format('Y-m-d H:i:s'),
             'creation_synckey' => $_state->creation_synckey,
-            'is_deleted'       => isset($_state->is_deleted) ? (int)!!$_state->is_deleted : 0
+            'is_deleted'       => isset($_state->is_deleted) ? (int)!!$_state->is_deleted : 0,
+        	'flags'            => isset($_state->flags) ? $_state->flags : null
         ));
         
         return $this->get($id);
+    }
+    
+    /**
+     * Update content state flags
+     *
+     * @param Syncope_Model_IContent $_state
+     * @return Boolean
+     */
+    public function update(Syncope_Model_IContent $_state)
+    {
+    	$return = $this->_db->update(
+    			$this->_tablePrefix . 'content', 
+    			array(
+    				'flags'            => isset($_state->flags) ? $_state->flags : null
+    			),
+    			"id = '" . $_state->id . "'"
+    	);
+    	return $return ? true : false;
     }
     
     /**

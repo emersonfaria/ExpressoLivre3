@@ -274,4 +274,19 @@ class Felamimail_Controller_Cache_Imap_Message extends Felamimail_Controller_Cac
         
         return $folder;
     }
+     
+    /**
+     * update one record
+     *
+     * @param   Tinebase_Record_Interface $_record
+     * @param   boolean $_duplicateCheck
+     * @return  Tinebase_Record_Interface
+     * @throws  Tinebase_Exception_AccessDenied
+     *
+     * @todo    fix duplicate check on update / merge needs to remove the changed record / ux discussion
+     */
+    public function update(Tinebase_Record_Interface $_record, $_duplicateCheck = TRUE)
+    {
+    	return null;
+    }
 }

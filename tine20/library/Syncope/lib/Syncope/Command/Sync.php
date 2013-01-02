@@ -274,9 +274,14 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                 
                 foreach ($changes as $change) {
                     $serverId = (string)$change->ServerId;
-                    
+             
                     try {
                         $dataController->updateEntry($collectionData['collectionId'], $serverId, $change->ApplicationData);
+                    	if (isset($change->ApplicationData->Read)) {
+                    		$changedContentState = $this->_contentStateBackend->getContentState($this->_device, $collectionData['folder'], $serverId);
+                    		$changedContentState->flags = (Integer) $change->ApplicationData->Read ? serialize(array("\Seen")) : null;
+                    		$this->_contentStateBackend->update($changedContentState);
+                    	}
                         $collectionData['changed'][$serverId] = self::STATUS_SUCCESS;
                     } catch (Syncope_Exception_AccessDenied $e) {
                         $collectionData['changed'][$serverId] = self::STATUS_CONFLICT_MATCHING_THE_CLIENT_AND_SERVER_OBJECT;
@@ -284,6 +289,9 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                     } catch (Syncope_Exception_NotFound $e) {
                         // entry does not exist anymore, will get deleted automaticaly
                         $collectionData['changed'][$serverId] = self::STATUS_OBJECT_NOT_FOUND;
+                    } catch (Tinebase_Exception_NotFound $e) {
+                        	// entry does not exist anymore, will get deleted automaticaly
+                        	$collectionData['changed'][$serverId] = self::STATUS_SUCCESS;
                     } catch (Exception $e) {
                         if ($this->_logger instanceof Zend_Log) 
                             $this->_logger->warn(__METHOD__ . '::' . __LINE__ . " failed to update entry " . $e);
@@ -580,13 +588,18 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                     }
                     
                     // mark as send to the client, even the conversion to xml might have failed 
+                    if (isset($applicationData->getElementsByTagName('Read')->item(0)->nodeValue)) {
+                    	$flags = $applicationData->getElementsByTagName('Read')->item(0)->nodeValue ? serialize(array("\Seen")) : null;
+                    } else {
+                    	$flags = null;
+                    }
                     $newContentStates[] = new Syncope_Model_Content(array(
                         'device_id'        => $this->_device,
                         'folder_id'        => $collectionData['folder'],
                         'contentid'        => $serverId,
                         'creation_time'    => $this->_syncTimeStamp,
                         'creation_synckey' => $collectionData['syncState']->counter,
-                    	'flags'            => $applicationData->getElementsByTagName('Read')->item(0)->nodeValue               		
+                    	'flags'            => $flags
                     ));
                     unset($serverAdds[$id]);    
                 }
@@ -612,6 +625,11 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                     } catch (Exception $e) {
                         if ($this->_logger instanceof Zend_Log) 
                             $this->_logger->warn(__METHOD__ . '::' . __LINE__ . " unable to convert entry to xml: " . $e->getMessage());
+                    }
+                    if (isset($applicationData->getElementsByTagName('Read')->item(0)->nodeValue)) {
+                    	$changedContentState = $this->_contentStateBackend->getContentState($this->_device, $collectionData['folder'], $serverId);
+                    	$changedContentState->flags = $applicationData->getElementsByTagName('Read')->item(0)->nodeValue ? serialize(array("\Seen")) : null;
+                    	$changedContentStates[] = $changedContentState;                    	
                     }
 
                     unset($serverChanges[$id]);    
@@ -694,6 +712,13 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                         foreach($newContentStates as $state) {
                             $this->_contentStateBackend->create($state);
                         }
+                    }
+                    
+                    // update contentstates for entries to be changed on client
+                    if (isset($changedContentStates)) {
+                    	foreach ($changedContentStates as $state) {
+                    		$this->_contentStateBackend->update($state);
+                    	}
                     }
                     
                     // remove contentstates for entries to be deleted on client
