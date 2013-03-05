@@ -218,6 +218,13 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                 $this->_syncStateBackend->resetState($this->_device, $collectionData['folder']);
                 $this->_contentStateBackend->resetState($this->_device, $collectionData['folder']);
                 
+                $collectionData['syncState']    = new Syncope_Model_SyncState(array(
+                		'device_id' => $this->_device,
+                		'counter'   => 0,
+                		'type'      => $collectionData['folder'],
+                		'lastsync'  => $this->_syncTimeStamp
+                ));
+                
                 $this->_collections[] = $collectionData;
                 
                 continue;
@@ -415,7 +422,7 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                     } else {
                         // fetch entries added since last sync
                         $allClientEntries = $this->_contentStateBackend->getFolderState($this->_device, $collectionData['folder']);
-                       	$allServerEntries = $dataController->getServerEntries($collectionData['collectionId'], $collectionData['filterType']);
+                        $allServerEntries = $dataController->getServerEntries($collectionData['collectionId'], $collectionData['filterType']);
                         // add entries
                         $serverDiff = array_diff($allServerEntries, $allClientEntries);
                         // add entries which produced problems during delete from client
@@ -681,6 +688,7 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                 }
                 
                 $collectionData['syncState']->lastsync = $this->_syncTimeStamp;
+                $collectionData['syncState']->lastsyncfull = $this->_syncTimeStamp;
                 
                 try {
                     $transactionId = Syncope_Registry::getTransactionManager()->startTransaction(Syncope_Registry::getDatabase());
@@ -730,7 +738,22 @@ class Syncope_Command_Sync extends Syncope_Command_Wbxml
                     if ($this->_logger instanceof Zend_Log) 
                         $this->_logger->crit(__METHOD__ . '::' . __LINE__ . ' failed to get content state for: ' . $collectionData['collectionId']);
                 }
-            }
+            } else {
+            	if (!empty($collectionData['added'])) {
+            		if ($this->_logger instanceof Zend_Log)
+            			$this->_logger->info(__METHOD__ . '::' . __LINE__ . " remove previous synckey as client added new entries");
+            		$keepPreviousSyncKey = false;
+            	} else {
+            		$keepPreviousSyncKey = true;
+            	}
+            	
+            	$collectionData['syncState']->lastsync = $this->_syncTimeStamp;
+				$collectionData['syncState']->lastsyncfull = $this->_syncTimeStamp;
+            	$collectionData['syncState']->pingfoundchanges = 1; //false
+            	
+            	// Update lastSync to stop old ping command
+            	$this->_syncStateBackend->update($collectionData['syncState']);
+            }               
         }
         
         

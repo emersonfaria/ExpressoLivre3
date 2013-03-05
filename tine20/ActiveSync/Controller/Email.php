@@ -527,43 +527,54 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
         if (Tinebase_Core::isLogLevel(Zend_Log::TRACE)) 
             Tinebase_Core::getLogger()->trace(__METHOD__ . '::' . __LINE__ . " accountData " . print_r($account->toArray(), true));
         
-        // update folder cache
-        Felamimail_Controller_Cache_Folder::getInstance()->updateCacheFolder($account);
-        
-        // get folders
-        $folderController = Felamimail_Controller_Folder::getInstance();
-        $folders = $folderController->getSubfolders($account->getId(), '');
-
         $result = array();
+        $folderController = Felamimail_Controller_Folder::getInstance();
         
-        foreach ($folders as $folder) {
-            if (! empty($folder->parent)) {
-                try {
-                    $parent   = $folderController->getByBackendAndGlobalName($folder->account_id, $folder->parent);
-                    $parentId = $parent->getId();
-                } catch (Tinebase_Exception_NotFound $ten) {
-                    continue;
-                }
-            } else {
-                $parentId = 0;
-            }
-            
-            $result[$folder->getId()] = array(
-                'folderId'      => $folder->getId(),
-                'parentId'      => $parentId,
-                'displayName'   => $folder->localname,
-                'type'          => $this->_getFolderType($folder->localname)
-            );
-        }
-        
-        if (trim(Tinebase_Core::getConfig()->messagecache) == 'imap') {
-        	$folders = $folderController->getSubfolders($account->getId(), '*');
+        if (trim(Tinebase_Core::getConfig()->messagecache) != 'imap') {
+        	// update folder cache
+        	Felamimail_Controller_Cache_Folder::getInstance()->updateCacheFolder($account);
         	
+        	// get folders
+        	$folders = $folderController->getSubfolders($account->getId(), '');
+      	
         	foreach ($folders as $folder) {
         		if (! empty($folder->parent)) {
         			try {
-        				$parent   = $folderController->getByBackendAndGlobalName($folder->account_id, $folder->parent);
-        				$parentId = $parent->getId();
+        				$parentId = Felamimail_Backend_Cache_Imap_Folder::encodeFolderUid(Felamimail_Model_Folder::encodeFolderName($folder->parent),$folder->account_id);
+        				//$parent   = $folderController->getByBackendAndGlobalName($folder->account_id, $folder->parent);
+        				//$parentId = $parent->getId();
+        			} catch (Tinebase_Exception_NotFound $ten) {
+        				continue;
+        			}
+        		} else {
+        			$parentId = '0';
+        		}
+        	
+        		$result[$folder->getId()] = array(
+        				'folderId'      => $folder->getId(),
+        				'parentId'      => $parentId,
+        				'displayName'   => $folder->localname,
+        				'type'          => $this->_getFolderType($folder->localname)
+        		);
+        	}
+        	
+        	return $result;
+        	
+        } else {
+        	//$folders = $folderController->getSubfolders($account->getId(), '*');
+        	$folders = $folderController->getFoldersAS($account->getId());
+        	foreach ($folders as $folder) {
+        		$folders[$folder['folderId']]['type'] = $this->_getFolderType($folder['displayName']);
+        	}
+        	
+        	return $folders;
+        	/*foreach ($folders as $folder) {
+        		if (! empty($folder->parent)) {
+        			try {
+        				$parentId = Felamimail_Backend_Cache_Imap_Folder::encodeFolderUid(Felamimail_Model_Folder::encodeFolderName($folder->parent),$folder->account_id);
+        				
+        				//$parent   = $folderController->getByBackendAndGlobalName($folder->account_id, $folder->parent);
+        				//$parentId = $parent->getId();
         			} catch (Tinebase_Exception_NotFound $ten) {
         				continue;
         			}
@@ -577,13 +588,13 @@ class ActiveSync_Controller_Email extends ActiveSync_Controller_Abstract
         				'displayName'   => $folder->localname,
         				'type'          => $this->_getFolderType($folder->localname)
         		);
-        	}       	
+        	}*/	
         }
 
         
         #if (Tinebase_Core::isLogLevel(Zend_Log::DEBUG)) Tinebase_Core::getLogger()->debug(__METHOD__ . '::' . __LINE__ . " folder result " . print_r($result, true));
         
-        return $result;
+        //return $result;
     }
     
     public function moveItem($_srcFolderId, $_serverId, $_dstFolderId)

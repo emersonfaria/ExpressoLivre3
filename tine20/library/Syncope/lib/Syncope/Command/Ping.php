@@ -32,6 +32,8 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
     
     const PING_TIMEOUT = 60;
     
+    const PING_QUIET_INTERVAL = 170;
+    
     /**
      * Enter description here...
      *
@@ -82,8 +84,11 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
                 }
                 $this->_device->pingfolder = serialize($folders);
             }
-            $this->_device = $this->_deviceBackend->update($this->_device);
         }
+        
+        $pingDateTime = new DateTime(null, new DateTimeZone('UTC'));
+        $this->_device->lastping = $pingDateTime;
+        $this->_device = $this->_deviceBackend->update($this->_device);
         
         $lifeTime = $this->_device->pinglifetime;
         #Tinebase_Core::setExecutionLifeTime($lifeTime);
@@ -98,6 +103,12 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
         	$_pingtimeout = self::PING_TIMEOUT;
         }
         
+        if (isset(Tinebase_Core::getConfig()->pingquietinterval)) {
+        	$_pingquietinterval = Tinebase_Core::getConfig()->pingtimeout;
+        } else {
+        	$_pingquietinterval = self::PING_QUIET_INTERVAL;
+        }
+        
         if ($this->_logger instanceof Zend_Log) 
             $this->_logger->debug(__METHOD__ . '::' . __LINE__ . " Folders to monitor($lifeTime / $intervalStart / $intervalEnd / $status): " . print_r($folders, true));
         
@@ -106,13 +117,29 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
             $folderWithChanges = array();
             
             do {
+            	sleep($_pingtimeout);
+            	
+            	$device = $this->_deviceBackend->get($this->_device->id);
+            	if (isset($device->lastping) && ($device->lastping->getTimestamp() > $pingDateTime->getTimestamp())){
+            		break;
+            	}
+            	
+            	$now = new DateTime('now', new DateTimeZone('utc'));
+            	
                 foreach((array) $folders as $folder) {
                     $dataController = Syncope_Data_Factory::factory($folder->class, $this->_device, $this->_syncTimeStamp);
-                    
+                    $syncStateFound = true;
                     try {
                         $syncState = $this->_syncStateBackend->getSyncState($this->_device, $folder);
-
-                        $foundChanges = !!$dataController->getCountOfChanges($this->_contentStateBackend, $folder, $syncState);
+                        
+                        // Workarround to avoid IMAP and Database overload. Only look for folder changes after a interval
+                        if (($now->getTimestamp() - $lastPingFetch[$folder->id]) > $_pingquietinterval) {
+                           $foundChanges = !!$dataController->getCountOfChanges($this->_contentStateBackend, $folder, $syncState);
+                           $lastPingTmp = new DateTime('now', new DateTimeZone('utc'));
+                           $lastPingFetch[$folder->id] = $lastPingTmp->getTimestamp();
+                        } else {
+                        	$foundChanges = false;
+                        }
                         
                     } catch (Syncope_Exception_NotFound $e) {
                         // folder got never synchronized to client
@@ -120,13 +147,17 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
                             $this->_logger->debug(__METHOD__ . '::' . __LINE__ . " " . $e->getMessage());
                         if ($this->_logger instanceof Zend_Log) 
                             $this->_logger->info(__METHOD__ . '::' . __LINE__ . ' syncstate not found. enforce sync for folder: ' . $folder->folderid);
-                        
+                        $syncStateFound = false;
                         $foundChanges = true;
                     }
                     
                     if($foundChanges == true) {
                         $this->_foldersWithChanges[] = $folder;
                         $status = self::STATUS_CHANGES_FOUND;
+                    }
+                    if ($syncStateFound === true) {
+                    	$foundChanges ? $syncState->pingfoundchanges = 0 : $syncState->pingfoundchanges = 1; // 0 is true
+                    	$this->_syncStateBackend->update($syncState);
                     }
                 }
                 
@@ -135,16 +166,15 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
                 }
                 
                 // another process synchronized data already
-                if(isset($syncState) && $syncState->lastsync > $this->_syncTimeStamp) {
-                    if ($this->_logger instanceof Zend_Log) 
-                        $this->_logger->info(__METHOD__ . '::' . __LINE__ . " terminate ping process. Some other process updated data already.");
-                    break;
-                }
-                sleep($_pingtimeout);
+                //if(isset($syncState) && $syncState->lastsync > $this->_syncTimeStamp) {
+                //	if ($this->_logger instanceof Zend_Log)
+                //		$this->_logger->info(__METHOD__ . '::' . __LINE__ . " terminate ping process. Some other process updated data already.");
+                //	break;
+                //}
 
                 $secondsLeft = $intervalEnd - time();
                 //if (Tinebase_Core::isLogLevel(Zend_Log::DEBUG)) Tinebase_Core::getLogger()->debug(__METHOD__ . '::' . __LINE__ . " DeviceId: " . $this->_device->deviceid . " seconds left: " . $secondsLeft);
-            } while($secondsLeft > 0);
+            } while(($secondsLeft - $_pingtimeout - 10) > 0);
         }
         
         if ($this->_logger instanceof Zend_Log) 

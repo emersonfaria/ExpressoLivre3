@@ -51,7 +51,8 @@ class Syncope_Backend_Device implements Syncope_Backend_IDevice
             'policykey'  => isset($_device->policykey)  ? $_device->policykey  : null,
             'useragent'  => isset($_device->useragent)  ? $_device->useragent  : '',
             'acsversion' => isset($_device->acsversion) ? $_device->acsversion : '',
-            'remotewipe' => isset($_device->remotewipe) ? $_device->remotewipe : null 
+            'remotewipe' => isset($_device->remotewipe) ? $_device->remotewipe : null,
+        	'lastping'   => isset($_device->lastping) ? $_device->lastping->format('Y-m-d H:i:s') : null
         ));
         
         return $this->get($id);
@@ -73,6 +74,10 @@ class Syncope_Backend_Device implements Syncope_Backend_IDevice
         
         if (! $device instanceof Syncope_Model_IDevice) {
             throw new Syncope_Exception_NotFound('id not found');
+        }
+        
+        if (!empty($device->lastping)) {
+        	$device->lastping = new DateTime($device->lastping, new DateTimeZone('utc'));
         }
         
         return $device;
@@ -100,6 +105,10 @@ class Syncope_Backend_Device implements Syncope_Backend_IDevice
             throw new Syncope_Exception_NotFound('device not found');
         }
         
+        if (!empty($device->lastping)) {
+        	$device->lastping = new DateTime($device->lastping, new DateTimeZone('utc'));
+        }
+        
         return $device;
     }
     
@@ -119,7 +128,8 @@ class Syncope_Backend_Device implements Syncope_Backend_IDevice
             'policykey'    => $_device->policykey,
             'pingfolder'   => $_device->pingfolder,
             'pinglifetime' => $_device->pinglifetime,
-            'remotewipe'   => $_device->remotewipe
+            'remotewipe'   => $_device->remotewipe,
+        	'lastping'     => isset($_device->lastping) ? $_device->lastping->format('Y-m-d H:i:s') : null 
         ), array(
             'id = ?' => $_device->id
         ));

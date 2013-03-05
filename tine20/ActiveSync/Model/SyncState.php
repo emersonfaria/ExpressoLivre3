@@ -46,6 +46,7 @@ class ActiveSync_Model_SyncState extends Tinebase_Record_Abstract
         'type'       => array(Zend_Filter_Input::ALLOW_EMPTY => false, 'presence'=>'required'),
         'counter'    => array(Zend_Filter_Input::ALLOW_EMPTY => true),
         'lastsync'   => array(Zend_Filter_Input::ALLOW_EMPTY => true),
+    	'lastsyncfull'   => array(Zend_Filter_Input::ALLOW_EMPTY => true),
         'pendingdata' => array(Zend_Filter_Input::ALLOW_EMPTY => true),
     );
 
@@ -55,6 +56,7 @@ class ActiveSync_Model_SyncState extends Tinebase_Record_Abstract
      * @var array list of datetime fields
      */    
     protected $_datetimeFields = array(
-        'lastsync'
+        'lastsync',
+    	'lastsyncfull'
     );    
 }

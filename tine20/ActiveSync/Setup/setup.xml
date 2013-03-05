@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <application>
     <name>ActiveSync</name>
-    <version>5.9</version>
+    <version>5.10</version>
     <order>90</order>
     <depends>
         <application>Tinebase</application>
@@ -52,7 +52,7 @@
         </table>
         <table>
             <name>acsync_device</name>
-            <version>3</version>
+            <version>4</version>
             <declaration>
                 <field>
                     <name>id</name>
@@ -176,6 +176,10 @@
                     <length>40</length>
                     <notnull>false</notnull>
                 </field>
+                <field>
+    				<name>lastping</name>
+    				<type>datetime</type>
+    			</field>
                 <index>
                     <name>id</name>
                     <primary>true</primary>
@@ -264,7 +268,7 @@
             <name>acsync_synckey</name>
             <engine>InnoDB</engine>
             <charset>utf8</charset>
-            <version>3</version>
+            <version>4</version>
             <declaration>
                 <field>
                     <name>id</name>
@@ -297,6 +301,15 @@
                     <name>pendingdata</name>
                     <type>blob</type>
                 </field>
+                <field>
+    				<name>lastsyncfull</name>
+    				<type>datetime</type>
+    			</field>
+    			<field>
+    				<name>pingfoundchanges</name>
+    				<type>integer</type>
+    				<default>1</default>
+    			</field>
                 <index>
                     <name>device_id--type--counter</name>
                     <primary>true</primary>
@@ -322,6 +335,13 @@
                         <ondelete>cascade</ondelete>
                         <onupdate>cascade</onupdate>
                     </reference>
+                </index>
+                <index>
+                    <name>id</name>
+                    <unique>true</unique>
+                    <field>
+                        <name>id</name>
+                    </field>
                 </index>
             </declaration>
         </table>
@@ -421,7 +441,7 @@
             <name>acsync_content</name>
             <engine>InnoDB</engine>
             <charset>utf8</charset>
-            <version>5</version>
+            <version>6</version>
             <declaration>
                 <field>
                     <name>id</name>
@@ -444,7 +464,7 @@
                 <field>
                     <name>contentid</name>
                     <type>text</type>
-                    <length>64</length>
+                    <length>254</length>
                     <notnull>true</notnull>
                 </field>
                 <field>

@@ -87,6 +87,58 @@ class Felamimail_Backend_Cache_Imap_Folder extends Felamimail_Backend_Cache_Imap
     }
     
     /**
+     * Get all folders (ActiveSync Tunning)
+     * @param string $accountId
+     * @return array
+     */
+    public function getAllFoldersAS(Felamimail_Model_Account $account)
+    {
+    	$resultArray = array();
+    	$accountId = $account->getId();
+
+    	foreach($this->_getFoldersFromIMAP($account) as $folder)
+    	{
+    		$folderId = self::encodeFolderUid(Felamimail_Model_Folder::encodeFolderName($folder['globalName']),$accountId);
+    		$globalName = $folderDecoded['globalName'];
+    		if($folder['globalName'] == 'INBOX' || $folder['globalName'] == 'user')
+    		{
+    			$parentId = '0';
+    		}
+    		else
+    		{
+    			$parentId = self::encodeFolderUid(substr($folder['globalName'],0 , strrpos($folder['globalName'],self::IMAPDELIMITER)), $accountId);
+    		}
+
+    		$resultArray[$folderId]['folderId'] = $folderId;
+    		$resultArray[$folderId]['parentId'] = $parentId;
+    		$resultArray[$folderId]['displayName'] = $folder['localName'];
+    		$resultArray[$folderId]['type'] = '';
+    	}
+
+    	foreach ($this->_getFoldersFromIMAP($account, '*') as $folder)
+    	{
+    		$folderId = self::encodeFolderUid(Felamimail_Model_Folder::encodeFolderName($folder['globalName']),$accountId);
+    		$globalName = $folderDecoded['globalName'];
+    		if($folder['globalName'] == 'INBOX' || $folder['globalName'] == 'user')
+    		{
+    			$parentId = '0';
+    		}
+    		else
+    		{
+    			$parentId = self::encodeFolderUid(substr($folder['globalName'],0 , strrpos($folder['globalName'],self::IMAPDELIMITER)), $accountId);
+    		}
+    		 
+    		$resultArray[$folderId]['folderId'] = $folderId;
+    		$resultArray[$folderId]['parentId'] = $parentId;
+    		$resultArray[$folderId]['displayName'] = $folder['localName'];
+    		$resultArray[$folderId]['type'] = '';
+    		 
+    	}
+
+   		return $resultArray;
+    }    
+    
+    /**
      * get folders from imap
      * 
      * @param Felamimail_Model_Account $_account

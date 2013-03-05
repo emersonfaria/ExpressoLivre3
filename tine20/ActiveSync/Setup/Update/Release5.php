@@ -439,6 +439,62 @@ class ActiveSync_Setup_Update_Release5 extends Setup_Update_Abstract
  
     	$this->setApplicationVersion('ActiveSync', '5.9');
     }
+    
+    /**
+     * update to 5.10
+     * - Add fields and index to acsync_synckey
+     *
+     * @return void
+     */
+    public function update_9()
+    {
+    	$this->validateTableVersion('acsync_synckey', '3');
+    	$this->validateTableVersion('acsync_device', '3');
 
+    	$declaration = new Setup_Backend_Schema_Field_Xml('
+    			<field>
+    				<name>lastping</name>
+    				<type>datetime</type>
+    			</field>
+    			');
+    	$this->_backend->addCol('acsync_device', $declaration);
+    	
+    	$declaration = new Setup_Backend_Schema_Field_Xml('
+    			<field>
+    				<name>lastsyncfull</name>
+    				<type>datetime</type>
+    			</field>
+    			');
+    	$this->_backend->addCol('acsync_synckey', $declaration);
+    	
+    	$declaration = new Setup_Backend_Schema_Field_Xml('
+    			<field>
+    				<name>pingfoundchanges</name>
+    				<type>integer</type>
+    				<default>1</default>
+    			</field>
+    			');
+    	$this->_backend->addCol('acsync_synckey', $declaration);
+    	
+    	$declaration = new Setup_Backend_Schema_Index_Xml('
+    			<index>
+    				<name>id</name>
+    				<unique>true</unique>
+    				<field>
+    					<name>id</name>
+    				</field>
+    			</index>
+    			');
+    	try {
+    	    $this->_backend->addIndex('acsync_synckey', $declaration);
+    	} catch (Zend_Db_Statement_Exception $zdse) {
+    	    // no index could be added
+    	}
+    
+    	$this->setTableVersion('acsync_synckey', '4');
+    	$this->setTableVersion('acsync_device', '4');
+    
+    	$this->setApplicationVersion('ActiveSync', '5.10');
+    }
     
 }
