@@ -76,7 +76,8 @@ class ActiveSync_Backend_SyncState
         );
         
         $newData = array(
-            'lastsync' => $_syncState->lastsync
+            'lastsync' => $_syncState->lastsync ,
+        	'lastsyncfull' => $_syncState->lastsyncfull,
         );
         
         $result = $this->_db->update(SQL_TABLE_PREFIX . 'acsync_synckey', $newData, $where);

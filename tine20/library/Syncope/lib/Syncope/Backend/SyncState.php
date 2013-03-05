@@ -50,6 +50,7 @@ class Syncope_Backend_SyncState implements Syncope_Backend_ISyncState
             'type'        => $_syncState->type instanceof Syncope_Model_IFolder ? $_syncState->type->id : $_syncState->type,
             'counter'     => $_syncState->counter,
             'lastsync'    => $_syncState->lastsync->format('Y-m-d H:i:s'),
+        	'lastsyncfull'    => isset($_syncState->lastsyncfull) ? $_syncState->lastsyncfull->format('Y-m-d H:i:s') : null,
             'pendingdata' => isset($_syncState->pendingdata) && is_array($_syncState->pendingdata) ? Zend_Json::encode($_syncState->pendingdata) : null
         ));
         
@@ -106,6 +107,9 @@ class Syncope_Backend_SyncState implements Syncope_Backend_ISyncState
     {
         if (!empty($state->lastsync)) {
             $state->lastsync = new DateTime($state->lastsync, new DateTimeZone('utc'));
+        }
+        if (!empty($state->lastsyncfull)) {
+        	$state->lastsyncfull = new DateTime($state->lastsyncfull, new DateTimeZone('utc'));
         }
         if ($state->pendingdata !== NULL) {
             $state->pendingdata = Zend_Json::decode($state->pendingdata);
@@ -170,7 +174,9 @@ class Syncope_Backend_SyncState implements Syncope_Backend_ISyncState
         $this->_db->update($this->_tablePrefix . 'synckey', array(
             'counter'     => $_syncState->counter,
             'lastsync'    => $_syncState->lastsync->format('Y-m-d H:i:s'),
-            'pendingdata' => isset($_syncState->pendingdata) && is_array($_syncState->pendingdata) ? Zend_Json::encode($_syncState->pendingdata) : null
+        	'lastsyncfull' => isset($_syncState->lastsyncfull) ? $_syncState->lastsyncfull->format('Y-m-d H:i:s') : null,
+            'pendingdata' => isset($_syncState->pendingdata) && is_array($_syncState->pendingdata) ? Zend_Json::encode($_syncState->pendingdata) : null,
+        	'pingfoundchanges' => $_syncState->pingfoundchanges
         ), array(
             'id = ?' => $_syncState->id
         ));

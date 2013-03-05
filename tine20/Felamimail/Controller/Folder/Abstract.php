@@ -703,4 +703,17 @@ abstract class Felamimail_Controller_Folder_Abstract extends Tinebase_Controller
         
         return $this->_backend->search($filter);
     }
+    
+    /**
+     * get all folders for ActiveSync
+     *
+     * @param string|Felamimail_Model_Account $_account
+     * @return array
+     */
+    public function getFoldersAS($_account)
+    {
+    	$account = ($_account instanceof Felamimail_Model_Account) ? $_account : Felamimail_Controller_Account::getInstance()->get($_account);
+    
+    	return $this->_backend->getAllFoldersAS($account);
+    }
 }

@@ -501,7 +501,7 @@ abstract class ActiveSync_Controller_Abstract implements Syncope_Data_IData
         
         $addedEntries       = array_diff($allServerEntries, $allClientEntries);
         $deletedEntries     = array_diff($allClientEntries, $allServerEntries);
-       	$changedEntries     = $this->getChangedEntries($folder->folderid, $syncState->lastsync);
+        $changedEntries     = $this->getChangedEntries($folder->folderid, $syncState->lastsyncfull);
         	
        	return count($addedEntries) + count($deletedEntries) + count($changedEntries);        	
     }
