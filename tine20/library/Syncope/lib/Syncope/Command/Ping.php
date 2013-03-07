@@ -104,7 +104,7 @@ class Syncope_Command_Ping extends Syncope_Command_Wbxml
         }
         
         if (isset(Tinebase_Core::getConfig()->pingquietinterval)) {
-        	$_pingquietinterval = Tinebase_Core::getConfig()->pingtimeout;
+        	$_pingquietinterval = Tinebase_Core::getConfig()->pingquietinterval;
         } else {
         	$_pingquietinterval = self::PING_QUIET_INTERVAL;
         }
